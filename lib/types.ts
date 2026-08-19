@@ -8,6 +8,13 @@ export interface Variety extends CatalogItem {
   crop_type_id: string;
 }
 
+export interface CropGoal {
+  crop_type_id: string;
+  year: number;
+  goal_weight_grams: number;
+  crop_type?: Pick<CatalogItem, "name">;
+}
+
 export interface Harvest {
   id: string;
   harvest_date: string;
@@ -56,7 +63,14 @@ export interface DashboardStats {
   previousWeightGrams: number;
   weightChangePercent: number | null;
   monthly: Array<{ month: string; weightGrams: number }>;
-  crops: Array<{ name: string; weightGrams: number; quantity: number }>;
+  crops: Array<{
+    id: string;
+    name: string;
+    weightGrams: number;
+    quantity: number;
+    goalWeightGrams: number | null;
+    varieties: Array<{ name: string; weightGrams: number; quantity: number }>;
+  }>;
   locations: Array<{ name: string; weightGrams: number }>;
   comparisonLabel: string;
 }

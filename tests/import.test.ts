@@ -2,10 +2,11 @@ import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import * as XLSX from "xlsx";
 import { normalizeLabel } from "@/lib/import/normalize";
 import { assertReconciliation, parseWorkbook, reviewCsv } from "@/lib/import/workbook";
+import type { ImportResult } from "@/lib/import/workbook";
 
 describe("etikettnormalisering", () => {
   it.each([
@@ -22,7 +23,9 @@ describe("etikettnormalisering", () => {
 
 const workbook = path.resolve("Skörd 2026.xlsx");
 describe.skipIf(!existsSync(workbook))("verklig importavstämning", () => {
-  const result = parseWorkbook(workbook);
+  let result: ImportResult;
+  beforeAll(() => { result = parseWorkbook(workbook); });
+
   it("matchar godkända totaler", () => { expect(() => assertReconciliation(result)).not.toThrow(); expect(result.totals.rows).toBe(1156); });
   it("tillämpar de godkända korrigeringarna", () => {
     expect(result.review).toHaveLength(0);

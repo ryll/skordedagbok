@@ -4,6 +4,14 @@ A Swedish, mobile-friendly harvest journal built with Next.js, TypeScript, and S
 
 The MVP focuses on balcony gardening. It does not include offline data entry, public registration, image management, price or expense tracking, or production configuration.
 
+## Features
+
+- Public harvest dashboard with yearly comparisons and period, crop, variety, and location filters
+- Annual harvest goals per crop, with progress shown in full-year dashboard views
+- Public harvest history and detail pages
+- Authenticated administration for harvests, goals, crops, varieties, and growing locations
+- Mobile-friendly PWA metadata and locally cached application icons
+
 ## Local development
 
 Requirements: Node.js 22+, npm, and a separate hosted Supabase project for development.

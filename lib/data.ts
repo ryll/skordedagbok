@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { comparisonPeriod } from "@/lib/dates";
-import type { CatalogItem, DashboardFilters, Harvest, Variety } from "@/lib/types";
+import type { CatalogItem, CropGoal, DashboardFilters, Harvest, Variety } from "@/lib/types";
 
 const HARVEST_SELECT = `*, crop_type:crop_types(*), variety:varieties(*), growing_location:growing_locations(*)`;
 
@@ -27,6 +27,11 @@ export async function getHarvestYears() {
   const years = new Set<number>();
   const pageSize = 1000;
 
+  const { data: goals, error: goalsError } = await supabase.from("crop_goals").select("year");
+  // Harvest statistics should remain available while a new optional migration is pending.
+  if (goalsError && goalsError.code !== "PGRST205") throw goalsError;
+  for (const goal of goals ?? []) years.add(Number(goal.year));
+
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await supabase.from("harvests").select("harvest_date")
       .order("harvest_date", { ascending: false }).range(from, from + pageSize - 1);
@@ -38,6 +43,18 @@ export async function getHarvestYears() {
   }
 
   return [...years].sort((a, b) => b - a);
+}
+
+export async function getCropGoals(year: number) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("crop_goals").select("crop_type_id, year, goal_weight_grams, crop_type:crop_types(name)").eq("year", year);
+  if (error) throw error;
+  return (data ?? []).map((goal) => ({
+    crop_type_id: String(goal.crop_type_id),
+    year: Number(goal.year),
+    goal_weight_grams: Number(goal.goal_weight_grams),
+    crop_type: Array.isArray(goal.crop_type) ? goal.crop_type[0] : goal.crop_type,
+  })) as CropGoal[];
 }
 
 export async function getDashboardRows(filters: DashboardFilters, today?: string) {

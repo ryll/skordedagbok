@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { harvestInputSchema } from "@/lib/validation";
+import { goalWeightKilogramsSchema, harvestInputSchema } from "@/lib/validation";
 import { comparisonPeriod, formatSwedishDate, monthPeriod, shiftYear, todayInStockholm } from "@/lib/dates";
 import { formatWeight } from "@/lib/format";
-import { aggregateDashboard } from "@/lib/dashboard";
+import { aggregateDashboard, isAnnualGoalView } from "@/lib/dashboard";
 import type { Harvest } from "@/lib/types";
 
 const ids = { crop: "11111111-1111-4111-8111-111111111111", variety: "22222222-2222-4222-8222-222222222222", location: "33333333-3333-4333-8333-333333333333" };
@@ -17,6 +17,14 @@ describe("skördevalidering", () => {
   it("avvisar sådd efter skörd", () => expect(harvestInputSchema.safeParse({ ...valid, sowing_date: "2026-08-09" }).success).toBe(false));
 });
 
+describe("målvalidering", () => {
+  it("accepterar kilogram med decimaler och tomma mål", () => {
+    expect(goalWeightKilogramsSchema.parse("12.5")).toBe(12.5);
+    expect(goalWeightKilogramsSchema.parse("")).toBeNull();
+  });
+  it("avvisar mål som inte är positiva", () => expect(goalWeightKilogramsSchema.safeParse("0").success).toBe(false));
+});
+
 describe("datum och svensk formatering", () => {
   it("använder Stockholm vid dygnsgränsen", () => expect(todayInStockholm(new Date("2026-03-28T23:30:00Z"))).toBe("2026-03-29"));
   it("formaterar svenska datum och vikter", () => { expect(formatSwedishDate("2026-08-08")).toContain("8 augusti 2026"); expect(formatWeight(1234.5)).toBe("1,23 kg"); });
@@ -28,10 +36,25 @@ describe("datum och svensk formatering", () => {
 });
 
 describe("dashboard", () => {
+  it("visar årsmål bara för helårsvyer utan sort- eller platsfilter", () => {
+    expect(isAnnualGoalView({ year: 2026 })).toBe(true);
+    expect(isAnnualGoalView({ year: 2026, cropTypeId: ids.crop })).toBe(true);
+    expect(isAnnualGoalView({ year: 2026, from: "2026-06-01" })).toBe(false);
+    expect(isAnnualGoalView({ year: 2026, to: "2026-06-30" })).toBe(false);
+    expect(isAnnualGoalView({ year: 2026, varietyId: ids.variety })).toBe(false);
+    expect(isAnnualGoalView({ year: 2026, growingLocationId: ids.location })).toBe(false);
+  });
+
   it("summerar, grupperar och jämför", () => {
     const result = aggregateDashboard([harvest("2026-06-01", 100, 2), harvest("2026-06-10", 50)], [harvest("2025-06-01", 100)], { year: 2026 }, "2026-08-08");
     expect(result).toMatchObject({ totalWeightGrams: 150, totalQuantity: 3, entryCount: 2, previousWeightGrams: 100, weightChangePercent: 50 });
     expect(result.monthly).toEqual([{ month: "2026-06", weightGrams: 150 }]);
-    expect(result.crops[0]).toMatchObject({ name: "Tomat – Sonnenherz", quantity: 3 });
+    expect(result.crops[0]).toMatchObject({ name: "Tomat", quantity: 3, goalWeightGrams: null });
+    expect(result.crops[0].varieties).toEqual([{ name: "Sonnenherz", quantity: 3, weightGrams: 150 }]);
+  });
+
+  it("visar grödor med mål även utan skörd", () => {
+    const result = aggregateDashboard([], [], { year: 2026 }, "2026-08-08", [{ crop_type_id: ids.crop, year: 2026, goal_weight_grams: 5000 }], [{ id: ids.crop, name: "Tomat", active: true }]);
+    expect(result.crops).toEqual([expect.objectContaining({ name: "Tomat", weightGrams: 0, goalWeightGrams: 5000, varieties: [] })]);
   });
 });

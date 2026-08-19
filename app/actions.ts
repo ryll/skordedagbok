@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { catalogNameSchema, harvestInputSchema } from "@/lib/validation";
+import { catalogNameSchema, goalWeightKilogramsSchema, goalYearSchema, harvestInputSchema } from "@/lib/validation";
 
-export type FormState = { error?: string; fields?: Record<string, string[]> };
+export type FormState = { error?: string; success?: string; fields?: Record<string, string[]> };
 
 async function authenticatedClient() {
   const supabase = await createClient();
@@ -85,6 +85,46 @@ export async function deleteCatalog(formData: FormData) {
   const { error } = await supabase.from(table).delete().eq("id", id);
   if (error?.code === "23503") await supabase.from(table).update({ active: false }).eq("id", id);
   revalidatePath("/admin/katalog");
+}
+
+export async function saveCropGoals(_state: FormState, formData: FormData): Promise<FormState> {
+  const year = goalYearSchema.safeParse(formData.get("year"));
+  if (!year.success) return { error: "Välj ett giltigt år" };
+
+  const supabase = await authenticatedClient();
+  const { data: crops, error: cropError } = await supabase.from("crop_types").select("id").eq("active", true);
+  if (cropError) return { error: "Grödorna kunde inte hämtas" };
+
+  const goals: Array<{ crop_type_id: string; year: number; goal_weight_grams: number }> = [];
+  const removals: string[] = [];
+  const fields: Record<string, string[]> = {};
+
+  for (const crop of crops ?? []) {
+    const field = `goal_${crop.id}`;
+    const parsed = goalWeightKilogramsSchema.safeParse(formData.get(field));
+    if (!parsed.success) {
+      fields[field] = parsed.error.issues.map((issue) => issue.message);
+    } else if (parsed.data === null) {
+      removals.push(crop.id);
+    } else {
+      goals.push({ crop_type_id: crop.id, year: year.data, goal_weight_grams: parsed.data * 1000 });
+    }
+  }
+
+  if (Object.keys(fields).length) return { error: "Kontrollera de markerade fälten", fields };
+
+  if (goals.length) {
+    const { error } = await supabase.from("crop_goals").upsert(goals, { onConflict: "crop_type_id,year" });
+    if (error) return { error: "Målen kunde inte sparas. Försök igen." };
+  }
+  if (removals.length) {
+    const { error } = await supabase.from("crop_goals").delete().eq("year", year.data).in("crop_type_id", removals);
+    if (error) return { error: "Några tomma mål kunde inte tas bort. Försök igen." };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/admin/mal");
+  return { success: `Målen för ${year.data} har sparats` };
 }
 
 export async function login(_state: FormState, formData: FormData): Promise<FormState> {

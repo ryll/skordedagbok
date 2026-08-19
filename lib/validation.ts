@@ -28,4 +28,11 @@ export const harvestInputSchema = z.object({
 
 export const catalogNameSchema = z.string().trim().min(1, "Ange ett namn").max(100, "Namnet är för långt");
 
+export const goalYearSchema = z.coerce.number().int().min(2000).max(2100);
+
+export const goalWeightKilogramsSchema = z.preprocess(
+  (value) => value === "" || value === undefined ? null : value,
+  z.coerce.number().positive("Målet måste vara större än noll").max(1_000_000, "Målet är för stort").nullable(),
+);
+
 export type HarvestValidationResult = ReturnType<typeof harvestInputSchema.safeParse>;

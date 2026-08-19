@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { aggregateDashboard } from "@/lib/dashboard";
-import { getCatalogs, getDashboardRows, getHarvestYears } from "@/lib/data";
+import { aggregateDashboard, isAnnualGoalView } from "@/lib/dashboard";
+import { getCatalogs, getCropGoals, getDashboardRows, getHarvestYears } from "@/lib/data";
 import { formatNumber, formatWeight } from "@/lib/format";
 import type { DashboardFilters } from "@/lib/types";
 import DashboardChart from "@/components/dashboard-chart";
 import DashboardPeriodFilters from "@/components/dashboard-period-filters";
 import { monthPeriod, todayInStockholm } from "@/lib/dates";
+import CropGoalCard from "@/components/crop-goal-card";
 
 export const dynamic = "force-dynamic";
 
@@ -35,10 +36,20 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
     from: selectedMonthPeriod?.from ?? value(search.fran), to: selectedMonthPeriod?.to ?? value(search.till), year: selectedYear,
     cropTypeId: value(search.groda), varietyId: value(search.sort), growingLocationId: value(search.plats),
   };
+  const showGoalProgress = isAnnualGoalView(filters);
   let stats;
+  let goalSetupError = false;
   if (!setupError) try {
-    const rows = await getDashboardRows(filters);
-    stats = aggregateDashboard(rows.current, rows.previous, filters);
+    const [rows, goalsResult] = await Promise.all([
+      getDashboardRows(filters),
+      showGoalProgress
+        ? getCropGoals(selectedYear).then((goals) => ({ goals, error: false })).catch(() => ({ goals: [], error: true }))
+        : Promise.resolve({ goals: [], error: false }),
+    ]);
+    const loadedGoals = goalsResult.goals;
+    goalSetupError = goalsResult.error;
+    const goals = filters.cropTypeId ? loadedGoals.filter((goal) => goal.crop_type_id === filters.cropTypeId) : loadedGoals;
+    stats = aggregateDashboard(rows.current, rows.previous, filters, undefined, goals, catalogs.crops);
   } catch {
     stats = aggregateDashboard([], [], filters);
     setupError = true;
@@ -47,6 +58,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
   return <>
     <h1 className="page-title">Översikt</h1>
     {setupError && <div className="notice">Anslut Supabase i <code>.env.local</code> för att visa skördedata. <Link href="/installning">Läs installationsguiden.</Link></div>}
+    {!setupError && goalSetupError && <div className="notice">Skördedata visas, men målfunktionen kräver den senaste Supabase-migreringen.</div>}
     <form className="card filters" aria-label="Filtrera statistik" autoComplete="off" data-form-type="other">
       <DashboardPeriodFilters key={`${selectedYear}-${selectedMonth}-${filters.from}-${filters.to}`} availableYears={availableYears} initialYear={selectedYear} initialMonth={selectedMonth} initialFrom={filters.from} initialTo={filters.to} />
       <div className="filter-row filter-catalogs">
@@ -64,7 +76,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
     <section className="grid dashboard-grid">
       <article className="card"><h2>Månad för månad</h2>{stats.monthly.length ? <div className="chart">{stats.monthly.map((row) => <div className="bar-row" key={row.month}><span>{new Intl.DateTimeFormat("sv-SE", { month: "short", year: "numeric" }).format(new Date(`${row.month}-15`))}</span><div className="bar-track"><div className="bar" style={{ width: `${row.weightGrams / maxMonth * 100}%` }} /></div><strong>{formatWeight(row.weightGrams)}</strong></div>)}</div> : <p className="empty">Ingen skörd under perioden</p>}</article>
       <article className="card"><h2>Odlingsplatser</h2><DashboardChart rows={stats.locations} /></article>
-      <article className="card span-2"><h2>Grödor och sorter</h2><DashboardChart rows={stats.crops} /></article>
+      <section className="crop-section span-2" aria-labelledby="crops-heading">
+        <h2 id="crops-heading">Grödor och sorter</h2>
+        {stats.crops.length
+          ? <div className="grid crop-grid">{stats.crops.map((crop) => <CropGoalCard crop={crop} key={crop.id} showGoalProgress={showGoalProgress} />)}</div>
+          : <div className="card"><p className="empty">{showGoalProgress ? "Ingen skörd eller något mål under perioden" : "Ingen skörd under perioden"}</p></div>}
+      </section>
     </section>
   </>;
 }

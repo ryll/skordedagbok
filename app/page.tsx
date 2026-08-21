@@ -23,7 +23,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
   let availableYears = [currentYear];
   let setupError = false;
   try {
-    const [loadedCatalogs, loadedYears] = await Promise.all([getCatalogs(), getHarvestYears()]);
+    const [loadedCatalogs, loadedYears] = await Promise.all([getCatalogs(true), getHarvestYears()]);
     catalogs = loadedCatalogs;
     if (loadedYears.length) availableYears = loadedYears;
   } catch {

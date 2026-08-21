@@ -112,7 +112,7 @@ export async function saveCropGoals(_state: FormState, formData: FormData): Prom
   if (!year.success) return { error: "Välj ett giltigt år" };
 
   const supabase = await authenticatedClient();
-  const { data: crops, error: cropError } = await supabase.from("crop_types").select("id").eq("active", true);
+  const { data: crops, error: cropError } = await supabase.from("crop_types").select("id");
   if (cropError) return { error: "Grödorna kunde inte hämtas" };
 
   const goals: Array<{ crop_type_id: string; year: number; goal_weight_grams: number }> = [];
@@ -121,6 +121,8 @@ export async function saveCropGoals(_state: FormState, formData: FormData): Prom
 
   for (const crop of crops ?? []) {
     const field = `goal_${crop.id}`;
+    // Crops the form never rendered must keep whatever goal they already have.
+    if (!formData.has(field)) continue;
     const parsed = goalWeightKilogramsSchema.safeParse(formData.get(field));
     if (!parsed.success) {
       fields[field] = parsed.error.issues.map((issue) => issue.message);

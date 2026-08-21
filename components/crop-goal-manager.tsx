@@ -15,7 +15,7 @@ export default function CropGoalManager({ crops, goals, year }: { crops: Catalog
         const field = `goal_${crop.id}`;
         const goal = goalByCrop.get(crop.id);
         return <div className="goal-row" key={crop.id}>
-          <label htmlFor={field}>{crop.name}</label>
+          <label htmlFor={field}>{crop.name}{crop.active ? "" : " (inaktiv)"}</label>
           <div className="goal-input">
             <input
               id={field}

@@ -11,7 +11,10 @@ export default async function GoalsPage({ searchParams }: { searchParams: Search
   const requestedYear = Number((await searchParams).ar);
   const years = [currentYear, currentYear + 1];
   const year = years.includes(requestedYear) ? requestedYear : currentYear;
-  const [{ crops }, goals] = await Promise.all([getCatalogs(), getCropGoals(year)]);
+  const [{ crops: allCrops }, goals] = await Promise.all([getCatalogs(true), getCropGoals(year)]);
+  // A retired crop keeps its statistics and its goal, so it stays editable while it has
+  // one. It is not offered as a new goal, which is what inactivating it asked for.
+  const crops = allCrops.filter((crop) => crop.active || goals.some((goal) => goal.crop_type_id === crop.id));
 
   return <>
     <section className="hero">

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { catalogNameSchema, goalWeightKilogramsSchema, goalYearSchema, harvestInputSchema } from "@/lib/validation";
+import { catalogNameSchema, goalWeightKilogramsSchema, goalYearSchema, harvestInputSchema, varietyMoveSchema } from "@/lib/validation";
 
 export type FormState = { error?: string; success?: string; fields?: Record<string, string[]> };
 
@@ -85,6 +85,26 @@ export async function deleteCatalog(formData: FormData) {
   const { error } = await supabase.from(table).delete().eq("id", id);
   if (error?.code === "23503") await supabase.from(table).update({ active: false }).eq("id", id);
   revalidatePath("/admin/katalog");
+}
+
+const MOVE_ERRORS: Record<string, string> = {
+  GD003: "Välj en annan gröda att flytta till.",
+  GD005: "Den mottagande grödan har redan en sort med det namnet. Byt namn på någon av dem först.",
+  "42501": "Du måste vara inloggad för att flytta sorter.",
+  // The move needs its migration applied; without it PostgREST cannot find the function.
+  PGRST202: "Funktionen för att flytta sorter saknas i databasen. Kör migrationerna.",
+  PGRST205: "Funktionen för att flytta sorter saknas i databasen. Kör migrationerna.",
+};
+
+export async function moveVarietyToCrop(_state: FormState, formData: FormData): Promise<FormState> {
+  const parsed = varietyMoveSchema.safeParse(values(formData));
+  if (!parsed.success) return { error: "Välj både sort och mottagande gröda" };
+  const supabase = await authenticatedClient();
+  const { data, error } = await supabase.rpc("reassign_variety", parsed.data);
+  if (error) return { error: MOVE_ERRORS[error.code ?? ""] ?? "Sorten kunde inte flyttas. Försök igen." };
+  revalidatePath("/"); revalidatePath("/skordar"); revalidatePath("/admin/katalog");
+  const moved = Number((data as { movedHarvests?: number } | null)?.movedHarvests ?? 0);
+  return { success: `Sorten flyttades. ${moved} skörd${moved === 1 ? "" : "ar"} följde med.` };
 }
 
 export async function saveCropGoals(_state: FormState, formData: FormData): Promise<FormState> {

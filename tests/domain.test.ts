@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { goalWeightKilogramsSchema, harvestInputSchema } from "@/lib/validation";
+import { goalWeightKilogramsSchema, harvestInputSchema, varietyMoveSchema } from "@/lib/validation";
 import { comparisonPeriod, formatSwedishDate, monthPeriod, shiftYear, todayInStockholm } from "@/lib/dates";
 import { formatWeight } from "@/lib/format";
 import { aggregateDashboard, isAnnualGoalView } from "@/lib/dashboard";
@@ -23,6 +23,19 @@ describe("målvalidering", () => {
     expect(goalWeightKilogramsSchema.parse("")).toBeNull();
   });
   it("avvisar mål som inte är positiva", () => expect(goalWeightKilogramsSchema.safeParse("0").success).toBe(false));
+});
+
+describe("flytt av sort", () => {
+  const variety = "20000000-0000-4000-8000-000000000001";
+  const crop = "10000000-0000-4000-8000-000000000002";
+
+  it("godkänner sort och mottagande gröda", () => {
+    expect(varietyMoveSchema.safeParse({ source_variety_id: variety, target_crop_id: crop }).success).toBe(true);
+  });
+
+  it("avvisar saknad mottagande gröda", () => {
+    expect(varietyMoveSchema.safeParse({ source_variety_id: variety, target_crop_id: "" }).success).toBe(false);
+  });
 });
 
 describe("datum och svensk formatering", () => {

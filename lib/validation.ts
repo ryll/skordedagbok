@@ -28,6 +28,11 @@ export const harvestInputSchema = z.object({
 
 export const catalogNameSchema = z.string().trim().min(1, "Ange ett namn").max(100, "Namnet är för långt");
 
+export const varietyMoveSchema = z.object({
+  source_variety_id: z.uuid("Välj sorten som ska flyttas"),
+  target_crop_id: z.uuid("Välj grödan att flytta sorten till"),
+});
+
 export const goalYearSchema = z.coerce.number().int().min(2000).max(2100);
 
 export const goalWeightKilogramsSchema = z.preprocess(

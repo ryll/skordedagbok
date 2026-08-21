@@ -10,6 +10,7 @@ The MVP focuses on balcony gardening. It does not include offline data entry, pu
 - Annual harvest goals per crop, with progress shown in full-year dashboard views
 - Public harvest history and detail pages
 - Authenticated administration for harvests, goals, crops, varieties, and growing locations
+- Moving a variety to another crop from the catalog administration, with its harvests following along
 - Mobile-friendly PWA metadata and locally cached application icons
 
 ## Local development

@@ -46,6 +46,8 @@ describe("datum och svensk formatering", () => {
   it("jämför innevarande års förflutna period", () => expect(comparisonPeriod({ year: 2026 }, "2026-08-08")).toMatchObject({ currentFrom: "2026-01-01", currentTo: "2026-08-08", previousFrom: "2025-01-01", previousTo: "2025-08-08" }));
   it("jämför avslutat helår", () => expect(comparisonPeriod({ year: 2025 }, "2026-08-08")).toMatchObject({ currentTo: "2025-12-31", previousTo: "2024-12-31" }));
   it("flyttar ett eget intervall ett kalenderår", () => expect(comparisonPeriod({ from: "2026-02-01", to: "2026-03-15" }, "2026-08-08")).toMatchObject({ previousFrom: "2025-02-01", previousTo: "2025-03-15" }));
+  it("fyller i saknad gräns vid endast från-datum", () => expect(comparisonPeriod({ from: "2026-05-01", year: 2026 }, "2026-08-08")).toMatchObject({ currentFrom: "2026-05-01", currentTo: "2026-08-08", previousFrom: "2025-05-01", previousTo: "2025-08-08", label: "samma period föregående år" }));
+  it("fyller i saknad gräns vid endast till-datum", () => expect(comparisonPeriod({ to: "2026-05-01", year: 2026 }, "2026-08-08")).toMatchObject({ currentFrom: "2026-01-01", currentTo: "2026-05-01", previousFrom: "2025-01-01", previousTo: "2025-05-01", label: "samma period föregående år" }));
 });
 
 describe("dashboard", () => {

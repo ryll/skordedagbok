@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { aggregateDashboard, isAnnualGoalView } from "@/lib/dashboard";
 import { getCatalogs, getCropGoals, getDashboardRows, getHarvestYears } from "@/lib/data";
 import { formatNumber, formatWeight } from "@/lib/format";
@@ -57,7 +56,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
   const maxMonth = Math.max(1, ...stats.monthly.map((row) => row.weightGrams));
   return <>
     <h1 className="page-title">Översikt</h1>
-    {setupError && <div className="notice">Anslut Supabase i <code>.env.local</code> för att visa skördedata. <Link href="/installning">Läs installationsguiden.</Link></div>}
+    {setupError && <div className="notice">Anslut Supabase i <code>.env.local</code> för att visa skördedata. Se <code>README.md</code> för instruktioner.</div>}
     {!setupError && goalSetupError && <div className="notice">Skördedata visas, men målfunktionen kräver den senaste Supabase-migreringen.</div>}
     <form className="card filters" aria-label="Filtrera statistik" autoComplete="off" data-form-type="other">
       <DashboardPeriodFilters key={`${selectedYear}-${selectedMonth}-${filters.from}-${filters.to}`} availableYears={availableYears} initialYear={selectedYear} initialMonth={selectedMonth} initialFrom={filters.from} initialTo={filters.to} />

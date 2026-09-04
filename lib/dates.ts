@@ -34,24 +34,28 @@ export function comparisonPeriod(
   filters: { from?: string; to?: string; year?: number },
   today = todayInStockholm(),
 ): { currentFrom: string; currentTo: string; previousFrom: string; previousTo: string; label: string } {
-  if (filters.from && filters.to) {
+  const currentYear = Number(today.slice(0, 4));
+  const year = filters.year ?? (filters.from ? Number(filters.from.slice(0, 4)) : filters.to ? Number(filters.to.slice(0, 4)) : currentYear);
+  const isCurrent = year === currentYear;
+  const defaultTo = isCurrent ? (filters.from && filters.from > today ? `${year}-12-31` : today) : `${year}-12-31`;
+
+  if (filters.from || filters.to) {
+    const currentFrom = filters.from ?? `${year}-01-01`;
+    const currentTo = filters.to ?? defaultTo;
     return {
-      currentFrom: filters.from,
-      currentTo: filters.to,
-      previousFrom: shiftYear(filters.from, -1),
-      previousTo: shiftYear(filters.to, -1),
+      currentFrom,
+      currentTo,
+      previousFrom: shiftYear(currentFrom, -1),
+      previousTo: shiftYear(currentTo, -1),
       label: "samma period föregående år",
     };
   }
-  const currentYear = Number(today.slice(0, 4));
-  const year = filters.year ?? currentYear;
-  const isCurrent = year === currentYear;
-  const to = isCurrent ? today : `${year}-12-31`;
+
   return {
     currentFrom: `${year}-01-01`,
-    currentTo: to,
+    currentTo: defaultTo,
     previousFrom: `${year - 1}-01-01`,
-    previousTo: isCurrent ? shiftYear(to, -1) : `${year - 1}-12-31`,
+    previousTo: isCurrent ? shiftYear(defaultTo, -1) : `${year - 1}-12-31`,
     label: isCurrent ? "samma tid föregående år" : `${year - 1}`,
   };
 }

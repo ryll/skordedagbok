@@ -1,5 +1,5 @@
 import CropGoalManager from "@/components/crop-goal-manager";
-import { getCatalogs, getCropGoals } from "@/lib/data";
+import { getCatalogs, getCropGoals, getHarvestYears } from "@/lib/data";
 import { todayInStockholm } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
@@ -9,9 +9,13 @@ type Search = Promise<Record<string, string | string[] | undefined>>;
 export default async function GoalsPage({ searchParams }: { searchParams: Search }) {
   const currentYear = Number(todayInStockholm().slice(0, 4));
   const requestedYear = Number((await searchParams).ar);
-  const years = [currentYear, currentYear + 1];
+  const [harvestYears, { crops: allCrops }] = await Promise.all([
+    getHarvestYears().catch(() => []),
+    getCatalogs(true),
+  ]);
+  const years = Array.from(new Set([currentYear + 1, currentYear, ...harvestYears])).sort((a, b) => b - a);
   const year = years.includes(requestedYear) ? requestedYear : currentYear;
-  const [{ crops: allCrops }, goals] = await Promise.all([getCatalogs(true), getCropGoals(year)]);
+  const goals = await getCropGoals(year);
   // A retired crop keeps its statistics and its goal, so it stays editable while it has
   // one. It is not offered as a new goal, which is what inactivating it asked for.
   const crops = allCrops.filter((crop) => crop.active || goals.some((goal) => goal.crop_type_id === crop.id));

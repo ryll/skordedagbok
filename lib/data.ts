@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { comparisonPeriod } from "@/lib/dates";
-import type { CatalogItem, CropGoal, DashboardFilters, Harvest, Variety } from "@/lib/types";
+import type { CatalogItem, CropGoal, DashboardFilters, Harvest, HarvestListFilters, Variety } from "@/lib/types";
 
 const HARVEST_SELECT = `*, crop_type:crop_types(*), variety:varieties(*), growing_location:growing_locations(*)`;
 
@@ -74,11 +74,28 @@ export async function getDashboardRows(filters: DashboardFilters, today?: string
   return { current: (current.data ?? []) as unknown as Harvest[], previous: (previous.data ?? []) as unknown as Harvest[] };
 }
 
-export async function getHarvests(page = 1, pageSize = 20) {
+export async function getHarvests(filters: HarvestListFilters = {}, page = 1, pageSize = 20) {
   const supabase = await createClient();
   const from = (page - 1) * pageSize;
-  const { data, count, error } = await supabase.from("harvests").select(HARVEST_SELECT, { count: "exact" })
-    .order("harvest_date", { ascending: false }).order("created_at", { ascending: false }).range(from, from + pageSize - 1);
+  let query = supabase.from("harvests").select(HARVEST_SELECT, { count: "exact" });
+
+  if (filters.year) {
+    query = query.gte("harvest_date", `${filters.year}-01-01`).lte("harvest_date", `${filters.year}-12-31`);
+  }
+  if (filters.cropTypeId) {
+    query = query.eq("crop_type_id", filters.cropTypeId);
+  }
+  if (filters.varietyId) {
+    query = query.eq("variety_id", filters.varietyId);
+  }
+  if (filters.growingLocationId) {
+    query = query.eq("growing_location_id", filters.growingLocationId);
+  }
+
+  const { data, count, error } = await query
+    .order("harvest_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .range(from, from + pageSize - 1);
   if (error) throw error;
   return { rows: (data ?? []) as unknown as Harvest[], count: count ?? 0, page, pageSize };
 }

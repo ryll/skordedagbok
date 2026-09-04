@@ -44,6 +44,7 @@ h2 { margin: 0 0 1rem; }
 .filter-row { display: grid; gap: .75rem; align-items: end; }
 .filter-period { grid-template-columns: minmax(7rem, .65fr) minmax(9rem, .85fr) repeat(2, minmax(13rem, 1fr)); }
 .filter-catalogs { grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(7rem, .65fr); }
+.filter-harvests { grid-template-columns: minmax(7rem, .7fr) repeat(3, minmax(0, 1fr)) auto; }
 .field { display: grid; gap: .4rem; }
 .field label, .label { font-weight: 700; font-size: .9rem; }
 input, select, textarea { width: 100%; min-height: 46px; border: 1px solid #a8aea6; border-radius: .75rem; background: #fff; color: var(--ink); padding: .7rem .8rem; }

@@ -56,6 +56,13 @@ export interface DashboardFilters {
   growingLocationId?: string;
 }
 
+export interface HarvestListFilters {
+  year?: number;
+  cropTypeId?: string;
+  varietyId?: string;
+  growingLocationId?: string;
+}
+
 export interface DashboardStats {
   totalWeightGrams: number;
   totalQuantity: number;

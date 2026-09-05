@@ -21,7 +21,7 @@ export interface ImportResult { rows: NormalizedImportRow[]; review: ImportRevie
 
 const SPECS = {
   Odling: { headers: ["Datum", "Sort", "Odlingsplats", "Antal", "Vikt", "Omkrets", "Längd"], candidates: 532, ref: "A1:G533" },
-  "Skörd 2026": { headers: ["<", "Sort", "Odlingsplats", "Antal", "Vikt", "Sådd datum", "Omkrets", "Längd", "Kommentar", "Totalskörd"], candidates: 624, ref: "A1:J636" },
+  "Skörd 2026": { headers: ["Datum", "Sort", "Odlingsplats", "Antal", "Vikt", "Sådd datum", "Omkrets", "Längd", "Kommentar", "Totalskörd"], candidates: 879, ref: "A1:J952" },
 } as const;
 
 const APPROVED_CORRECTIONS = {
@@ -31,9 +31,9 @@ const APPROVED_CORRECTIONS = {
     expectedSowingDate: "2026-12-21",
     sowingDate: "2025-12-21",
   },
-  "Skörd 2026:106": { expectedLabel: "Chili - Aurora", expectedWeightGrams: 0, weightGrams: 0.5 },
-  "Skörd 2026:136": { expectedLabel: "Chili - Aurora", expectedWeightGrams: 0, weightGrams: 0.5 },
-  "Skörd 2026:216": { expectedLabel: "Chili - Aurora", expectedWeightGrams: 0, weightGrams: 0.5 },
+  "Skörd 2026:104": { expectedLabel: "Chili - Aurora", expectedWeightGrams: 0, weightGrams: 0.5 },
+  "Skörd 2026:139": { expectedLabel: "Chili - Aurora", expectedWeightGrams: 0, weightGrams: 0.5 },
+  "Skörd 2026:214": { expectedLabel: "Chili - Aurora", expectedWeightGrams: 0, weightGrams: 0.5 },
   "Skörd 2026:277": { expectedLabel: "Chili - Aurora", expectedWeightGrams: 0, weightGrams: 0.5 },
 } as const;
 
@@ -108,8 +108,8 @@ export function parseWorkbook(path: string): ImportResult {
 }
 
 export function assertReconciliation(result: ImportResult) {
-  const expected = { "2025": { rows: 532, quantity: 2231, weightGrams: 38952 }, "2026": { rows: 624, quantity: 1361, weightGrams: 33649.37 } };
-  if (JSON.stringify(result.totals.byYear) !== JSON.stringify(expected) || result.totals.rows !== 1156 || result.totals.reviewRows !== 0) {
+  const expected = { "2025": { rows: 532, quantity: 2231, weightGrams: 38952 }, "2026": { rows: 879, quantity: 2325, weightGrams: 55251.68 } };
+  if (JSON.stringify(result.totals.byYear) !== JSON.stringify(expected) || result.totals.rows !== 1411 || result.totals.reviewRows !== 0) {
     throw new Error(`Avstämningen misslyckades: ${JSON.stringify(result.totals)}`);
   }
 }

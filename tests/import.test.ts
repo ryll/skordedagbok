@@ -18,19 +18,22 @@ describe("etikettnormalisering", () => {
     ["Zucchini Gul - One Ball", { cropType: "Zucchini", variety: "Gul One Ball" }],
     ['Salladssenap "Purple Osaka"', { cropType: "Salladssenap", variety: "Purple Osaka" }],
     ['Kål - Pak Choi "Joy Choy""', { cropType: "Kål", variety: 'Pak Choi "Joy Choy"' }],
+    ["Rucola", { cropType: "Gröna Blad", variety: "Rucola" }],
+    ["Ängssyra", { cropType: "Gröna Blad", variety: "Ängssyra" }],
+    ["Isört", { cropType: "Gröna Blad", variety: "Isört" }],
   ])("normaliserar %s", (label, expected) => expect(normalizeLabel(label)).toEqual(expected));
 });
 
-const workbook = path.resolve("Skörd 2026.xlsx");
+const workbook = path.resolve("tmp/Skörd 2026.xlsx");
 describe.skipIf(!existsSync(workbook))("verklig importavstämning", () => {
   let result: ImportResult;
   beforeAll(() => { result = parseWorkbook(workbook); });
 
-  it("matchar godkända totaler", () => { expect(() => assertReconciliation(result)).not.toThrow(); expect(result.totals.rows).toBe(1156); });
+  it("matchar godkända totaler", () => { expect(() => assertReconciliation(result)).not.toThrow(); expect(result.totals.rows).toBe(1411); });
   it("tillämpar de godkända korrigeringarna", () => {
     expect(result.review).toHaveLength(0);
     expect(result.rows.find((row) => row.sourceSheet === "Skörd 2026" && row.sourceRow === 27)).toMatchObject({ sowingDate: "2025-12-21", weightGrams: 2 });
-    for (const sourceRow of [106, 136, 216, 277]) expect(result.rows.find((row) => row.sourceSheet === "Skörd 2026" && row.sourceRow === sourceRow)).toMatchObject({ cropType: "Chili", variety: "Aurora", weightGrams: 0.5 });
+    for (const sourceRow of [104, 139, 214, 277]) expect(result.rows.find((row) => row.sourceSheet === "Skörd 2026" && row.sourceRow === sourceRow)).toMatchObject({ cropType: "Chili", variety: "Aurora", weightGrams: 0.5 });
     expect(reviewCsv(result.review).split("\n")).toHaveLength(2);
   });
   it("behåller båda raderna i godkända dubblettpar", () => {

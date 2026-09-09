@@ -24,3 +24,6 @@ AGENTS.md
 CLAUDE.md
 STATUS.md
 tmp/
+# Local backups and their credentials
+backups/
+ops/backup.env

@@ -1,0 +1,8 @@
+[Unit]
+Description=Back up the Skordedagbok production database
+Documentation=file:///home/ryll/coding/skordedagbok/ops/backup.sh
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/ryll/coding/skordedagbok/ops/backup.sh

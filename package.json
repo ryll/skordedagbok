@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
-    "@testing-library/jest-dom": "^6.6.4",
+    "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^22.17.1",
     "@types/react": "^19.1.10",

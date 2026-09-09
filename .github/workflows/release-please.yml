@@ -1,0 +1,29 @@
+# Maintains a release pull request that updates CHANGELOG.md and the version in
+# package.json from the Conventional Commit subjects on main. Merging that pull
+# request tags the release and publishes the GitHub Release notes.
+#
+# Releases document what shipped; they do not gate deployment. Vercel deploys
+# every push to main regardless.
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  release-please:
+    name: Release PR and tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

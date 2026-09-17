@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { aggregateDashboard, isAnnualGoalView } from "@/lib/dashboard";
 import { getCatalogs, getCropGoals, getDashboardRows, getHarvestYears } from "@/lib/data";
 import { formatNumber, formatWeight } from "@/lib/format";
@@ -6,13 +7,33 @@ import DashboardChart from "@/components/dashboard-chart";
 import DashboardPeriodFilters from "@/components/dashboard-period-filters";
 import { monthPeriod, todayInStockholm } from "@/lib/dates";
 import CropGoalCard from "@/components/crop-goal-card";
+import PageLoading from "@/components/page-loading";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 type Search = Promise<Record<string, string | string[] | undefined>>;
 const value = (entry: string | string[] | undefined) => typeof entry === "string" ? entry : undefined;
 
-export default async function DashboardPage({ searchParams }: { searchParams: Search }) {
+function hasErrorCode(error: unknown, code: string) {
+  return typeof error === "object" && error !== null && "code" in error && error.code === code;
+}
+
+async function loadCropGoals(year: number) {
+  try {
+    return { goals: await getCropGoals(year), error: null };
+  } catch (error) {
+    return { goals: [] as Awaited<ReturnType<typeof getCropGoals>>, error };
+  }
+}
+
+export default function DashboardPage({ searchParams }: { searchParams: Search }) {
+  return <Suspense fallback={<PageLoading title="Översikt" />}>
+    <DashboardContent searchParams={searchParams} />
+  </Suspense>;
+}
+
+async function DashboardContent({ searchParams }: { searchParams: Search }) {
   const search = await searchParams;
   const currentYear = Number(todayInStockholm().slice(0, 4));
   const requestedYear = Number(value(search.ar));
@@ -20,13 +41,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
   const selectedMonth = /^(0[1-9]|1[0-2])$/.test(requestedMonth) ? requestedMonth : "";
   let catalogs: Awaited<ReturnType<typeof getCatalogs>> = { crops: [], varieties: [], locations: [] };
   let availableYears = [currentYear];
-  let setupError = false;
-  try {
+  const configured = isSupabaseConfigured();
+  let dataError = !configured;
+  if (configured) try {
     const [loadedCatalogs, loadedYears] = await Promise.all([getCatalogs(true), getHarvestYears()]);
     catalogs = loadedCatalogs;
     if (loadedYears.length) availableYears = loadedYears;
-  } catch {
-    setupError = true;
+  } catch (error) {
+    console.error("Failed to load dashboard catalogs and harvest years", error);
+    dataError = true;
   }
   const defaultYear = availableYears.includes(currentYear) ? currentYear : availableYears[0];
   const selectedYear = availableYears.includes(requestedYear) ? requestedYear : defaultYear;
@@ -36,28 +59,35 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
     cropTypeId: value(search.groda), varietyId: value(search.sort), growingLocationId: value(search.plats),
   };
   const showGoalProgress = isAnnualGoalView(filters);
-  let stats;
-  let goalSetupError = false;
-  if (!setupError) try {
+  let stats: ReturnType<typeof aggregateDashboard> | null = null;
+  let goalError: "migration" | "unavailable" | null = null;
+  if (!dataError) try {
     const [rows, goalsResult] = await Promise.all([
       getDashboardRows(filters),
       showGoalProgress
-        ? getCropGoals(selectedYear).then((goals) => ({ goals, error: false })).catch(() => ({ goals: [], error: true }))
-        : Promise.resolve({ goals: [], error: false }),
+        ? loadCropGoals(selectedYear)
+        : Promise.resolve({ goals: [] as Awaited<ReturnType<typeof getCropGoals>>, error: null }),
     ]);
     const loadedGoals = goalsResult.goals;
-    goalSetupError = goalsResult.error;
+    if (goalsResult.error) {
+      console.error("Failed to load dashboard harvest goals", goalsResult.error);
+      goalError = hasErrorCode(goalsResult.error, "PGRST205") ? "migration" : "unavailable";
+    }
     const goals = filters.cropTypeId ? loadedGoals.filter((goal) => goal.crop_type_id === filters.cropTypeId) : loadedGoals;
     stats = aggregateDashboard(rows.current, rows.previous, filters, undefined, goals, catalogs.crops);
-  } catch {
-    stats = aggregateDashboard([], [], filters);
-    setupError = true;
-  } else stats = aggregateDashboard([], [], filters);
-  const maxMonth = Math.max(1, ...stats.monthly.map((row) => row.weightGrams));
+  } catch (error) {
+    console.error("Failed to load dashboard harvest data", error);
+    dataError = true;
+  }
+  const maxMonth = Math.max(1, ...(stats?.monthly.map((row) => row.weightGrams) ?? []));
+  const showSetupNotice = !configured && process.env.NODE_ENV !== "production";
   return <>
     <h1 className="page-title">Översikt</h1>
-    {setupError && <div className="notice">Anslut Supabase i <code>.env.local</code> för att visa skördedata. Se <code>README.md</code> för instruktioner.</div>}
-    {!setupError && goalSetupError && <div className="notice">Skördedata visas, men målfunktionen kräver den senaste Supabase-migreringen.</div>}
+    {showSetupNotice && <div className="notice" role="alert">Anslut Supabase i <code>.env.local</code> för att visa skördedata. Se <code>README.md</code> för instruktioner.</div>}
+    {dataError && !showSetupNotice && <div className="notice error" role="alert">Kunde inte hämta skördedata just nu. Prova att ladda om sidan om en stund.</div>}
+    {stats && <>
+    {goalError === "migration" && <div className="notice">Skördedata visas, men målfunktionen kräver den senaste Supabase-migreringen.</div>}
+    {goalError === "unavailable" && <div className="notice">Skördedata visas, men skördemålen kunde inte hämtas just nu.</div>}
     <form className="card filters" aria-label="Filtrera statistik" autoComplete="off" data-form-type="other">
       <DashboardPeriodFilters key={`${selectedYear}-${selectedMonth}-${filters.from}-${filters.to}`} availableYears={availableYears} initialYear={selectedYear} initialMonth={selectedMonth} initialFrom={filters.from} initialTo={filters.to} />
       <div className="filter-row filter-catalogs">
@@ -82,5 +112,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Se
           : <div className="card"><p className="empty">{showGoalProgress ? "Ingen skörd eller något mål under perioden" : "Ingen skörd under perioden"}</p></div>}
       </section>
     </section>
+    </>}
   </>;
 }

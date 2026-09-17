@@ -1,8 +1,11 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import HarvestFilters from "@/components/harvest-filters";
+import PageLoading from "@/components/page-loading";
 import { getCatalogs, getHarvests, getHarvestYears } from "@/lib/data";
 import { formatSwedishDate } from "@/lib/dates";
 import { formatNumber, formatWeight } from "@/lib/format";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
 import type { HarvestListFilters } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +22,13 @@ function buildPageUrl(page: number, filters: Record<string, string | undefined>)
   return `/skordar${query ? `?${query}` : ""}`;
 }
 
-export default async function HarvestsPage({ searchParams }: { searchParams: Search }) {
+export default function HarvestsPage({ searchParams }: { searchParams: Search }) {
+  return <Suspense fallback={<PageLoading title="Alla skördar" />}>
+    <HarvestsContent searchParams={searchParams} />
+  </Suspense>;
+}
+
+async function HarvestsContent({ searchParams }: { searchParams: Search }) {
   const search = await searchParams;
   const page = Math.max(1, Number(value(search.sida)) || 1);
   const requestedYear = Number(value(search.ar));
@@ -40,8 +49,10 @@ export default async function HarvestsPage({ searchParams }: { searchParams: Sea
   let catalogs: Awaited<ReturnType<typeof getCatalogs>> = { crops: [], varieties: [], locations: [] };
   let years: number[] = [];
   let result = { rows: [], count: 0, page, pageSize: 20 } as Awaited<ReturnType<typeof getHarvests>>;
+  const configured = isSupabaseConfigured();
+  let dataError = !configured;
 
-  try {
+  if (configured) try {
     const [loadedCatalogs, loadedYears, loadedHarvests] = await Promise.all([
       getCatalogs(true),
       getHarvestYears(),
@@ -50,8 +61,9 @@ export default async function HarvestsPage({ searchParams }: { searchParams: Sea
     catalogs = loadedCatalogs;
     years = loadedYears;
     result = loadedHarvests;
-  } catch {
-    /* database setup notice handled gracefully */
+  } catch (error) {
+    console.error("Failed to load harvest history", error);
+    dataError = true;
   }
 
   const pages = Math.max(1, Math.ceil(result.count / result.pageSize));
@@ -63,6 +75,7 @@ export default async function HarvestsPage({ searchParams }: { searchParams: Sea
     sort: filterVarietyId,
     plats: filterLocationId,
   };
+  const showSetupNotice = !configured && process.env.NODE_ENV !== "production";
 
   return <>
     <section className="hero">
@@ -71,6 +84,9 @@ export default async function HarvestsPage({ searchParams }: { searchParams: Sea
       <p className="lead">Varje liten skörd berättar något om odlingsåret.</p>
     </section>
     {message && <div className="notice" role="status">{message}</div>}
+    {showSetupNotice && <div className="notice" role="alert">Anslut Supabase i <code>.env.local</code> för att visa skördedata. Se <code>README.md</code> för instruktioner.</div>}
+    {dataError && !showSetupNotice && <div className="notice error" role="alert">Kunde inte hämta skördedata just nu. Prova att ladda om sidan om en stund.</div>}
+    {!dataError && <>
     <HarvestFilters
       years={years}
       crops={catalogs.crops}
@@ -134,5 +150,6 @@ export default async function HarvestsPage({ searchParams }: { searchParams: Sea
         {page < pages ? <Link className="button secondary" href={buildPageUrl(page + 1, activeUrlParams)}>Nästa →</Link> : <span />}
       </nav>
     )}
+    </>}
   </>;
 }

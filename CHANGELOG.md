@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.2](https://github.com/ryll/skordedagbok/compare/v1.0.1...v1.0.2) (2026-11-19)
+
+
+### Bug fixes
+
+* **ops:** retry pg_dump on transient connection failures ([#39](https://github.com/ryll/skordedagbok/issues/39)) ([7c5280f](https://github.com/ryll/skordedagbok/commit/7c5280f2a3d760e0edf12408bf30a74ae71023fd))
+* **public:** handle data fetch errors and add loading states ([#13](https://github.com/ryll/skordedagbok/issues/13)) ([9fc10e9](https://github.com/ryll/skordedagbok/commit/9fc10e91e8d525e219a83c46206f8b1580ac24e3))
+
 ## [1.0.1](https://github.com/ryll/skordedagbok/compare/v1.0.0...v1.0.1) (2026-09-09)
 
 

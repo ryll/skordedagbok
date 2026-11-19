@@ -35,11 +35,23 @@ mkdir -p "$backup_dir"
 
 target="$backup_dir/skordedagbok-$(date +%F-%H%M).sql"
 
-if ! pg_dump --schema=public --no-owner "$PROD_DB_URL" > "$target" 2>"$target.err"; then
-  notify "pg_dump failed: $(tail -n 1 "$target.err")"
-  rm -f "$target" "$target.err"
-  exit 1
-fi
+# Retry, because the timer can fire at boot before DNS is up (After=network-online.target
+# has no effect in a user unit), and the Supabase pooler briefly loses the database
+# during restarts and maintenance.
+attempts=5
+retry_delay=60
+for ((attempt = 1; ; attempt++)); do
+  if pg_dump --schema=public --no-owner "$PROD_DB_URL" > "$target" 2>"$target.err"; then
+    break
+  fi
+  if ((attempt >= attempts)); then
+    notify "pg_dump failed after $attempts attempts: $(tail -n 1 "$target.err")"
+    rm -f "$target" "$target.err"
+    exit 1
+  fi
+  echo "pg_dump attempt $attempt failed, retrying in ${retry_delay}s: $(tail -n 1 "$target.err")" >&2
+  sleep "$retry_delay"
+done
 rm -f "$target.err"
 
 # A dump that succeeded but lost the data is worse than a failure, because it
